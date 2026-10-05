@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Struck-Off Companies Checker</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+<header class="hero">
+  <h1>Get your <span>Struck-Off Companies</span> Identified</h1>
+  <p>Check suppliers against MCA company status &mdash; for the Revised Schedule III disclosure of transactions with
+     companies struck off under section 248 / 560 of the Companies Act, 2013.</p>
+  <p class="meta">Data source: <b>{{ provider }}</b>
+    {% if provider == 'demo' %}<span class="badge warn">Demo data &ndash; not real MCA records</span>{% endif %}</p>
+</header>
+
+<main>
+  <nav class="tabs">
+    <button class="tab active" data-tab="single">Single Search</button>
+    <button class="tab" data-tab="bulk">Bulk Check</button>
+  </nav>
+
+  <section id="single" class="panel">
+    <p class="hint">Search by any one of: company name, CIN, PAN or GSTIN (CIN &rarr; PAN &rarr; name is tried in that order).</p>
+    <form id="single-form" class="grid">
+      <label>Company Name<input name="name" placeholder="e.g. Aster Technologies Pvt Ltd"></label>
+      <label>CIN / LLPIN<input name="cin" placeholder="U72200MH2005PTC123456"></label>
+      <label>PAN<input name="pan" placeholder="AAACA0242K" maxlength="10"></label>
+      <label>GSTIN<input name="gstin" placeholder="27AAACA0242K1Z5" maxlength="15"></label>
+      <button type="submit" class="primary">Check Status</button>
+    </form>
+  </section>
+
+  <section id="bulk" class="panel" hidden>
+    <p class="hint">Upload the supplier list (.xlsx / .csv) with columns <b>Company Name, GST, PAN</b> (CIN optional) &mdash;
+      <a href="/api/template">download template</a>. Or paste rows below, one per line:
+      <code>Name, GSTIN, PAN, CIN</code> (leave unknown fields empty).</p>
+    <div class="row">
+      <input type="file" id="bulk-file" accept=".xlsx,.xlsm,.csv,.txt">
+      <button id="bulk-file-btn" class="primary">Check Uploaded File</button>
+    </div>
+    <textarea id="bulk-text" rows="5" placeholder="Aster Technologies Pvt Ltd, 27AAACA0242K1Z5, AAACA0242K,&#10;Sunrise Polymers Private Limited,,,"></textarea>
+    <button id="bulk-text-btn" class="primary">Check Pasted List</button>
+  </section>
+
+  <div id="msg" class="msg" hidden></div>
+
+  <section id="results" hidden>
+    <div class="toolbar">
+      <div id="summary" class="chips"></div>
+      <label class="check"><input type="checkbox" id="only-flagged"> Show only struck-off / under process / double status</label>
+      <button id="download" class="primary">Download Excel Report</button>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>#</th><th>Company (input)</th><th>PAN</th><th>CIN</th><th>Name as per CIN</th>
+          <th>MCA Status</th><th>Check</th><th>Incorporated</th><th>ROC</th><th>Remarks</th></tr></thead>
+        <tbody id="rows"></tbody>
+      </table>
+    </div>
+  </section>
+</main>
+<footer>Always confirm important findings on the MCA portal (View Company Master Data). Status is as of the check time.</footer>
+<script src="{{ url_for('static', filename='app.js') }}"></script>
+</body>
+</html>

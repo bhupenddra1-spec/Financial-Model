@@ -1,0 +1,26 @@
+:root{--teal:#1d9bb5;--navy:#2c3e57;--bg:#f2f7fa;--line:#d5e1e8}
+*{box-sizing:border-box}
+body{margin:0;font-family:system-ui,Segoe UI,Roboto,sans-serif;background:var(--bg);color:#1f2a37}
+.hero{padding:32px 6vw 20px;background:linear-gradient(120deg,#eaf5f9,#fff)}
+.hero h1{margin:0 0 8px;font-size:2rem}.hero h1 span{color:var(--teal)}
+.hero p{margin:4px 0;max-width:900px}.meta{font-size:.9rem;color:#556}
+.badge{padding:2px 8px;border-radius:10px;margin-left:8px;font-size:.8rem}.warn{background:#fff3cd;color:#7a5b00}
+main{padding:16px 6vw}
+.tabs{display:flex;gap:4px}.tab{border:0;padding:10px 20px;background:#dde9ef;border-radius:8px 8px 0 0;cursor:pointer;font-size:1rem}
+.tab.active{background:var(--teal);color:#fff}
+.panel{background:#fff;border:1px solid var(--line);padding:18px;border-radius:0 8px 8px 8px}
+.hint{margin-top:0;color:#445}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;align-items:end}
+label{display:flex;flex-direction:column;font-size:.85rem;font-weight:600;gap:4px}
+input[type=text],input:not([type]),input[type=file],textarea{padding:9px;border:1px solid #b9c8d1;border-radius:6px;font:inherit}
+textarea{width:100%;margin:10px 0}.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:6px}
+button.primary{background:var(--navy);color:#fff;border:0;padding:10px 18px;border-radius:6px;cursor:pointer;font-size:.95rem}
+button.primary:disabled{opacity:.5;cursor:wait}
+.msg{margin:12px 0;padding:10px 14px;border-radius:6px;background:#e7f3ff}.msg.error{background:#fde2e2;color:#8a1f1f}
+.toolbar{display:flex;gap:16px;align-items:center;flex-wrap:wrap;margin:16px 0}.check{flex-direction:row;font-weight:400;align-items:center}
+.chips{display:flex;gap:8px;flex-wrap:wrap}.chip{padding:4px 10px;border-radius:12px;font-size:.85rem;font-weight:600}
+.table-wrap{overflow:auto;background:#fff;border:1px solid var(--line);border-radius:8px;max-height:65vh}
+table{border-collapse:collapse;width:100%;font-size:.85rem}th,td{padding:8px 10px;border-bottom:1px solid #eef2f5;text-align:left;vertical-align:top}
+th{position:sticky;top:0;background:var(--navy);color:#fff;white-space:nowrap}
+.f-Struck-Off{background:#ffc7ce}.f-Under-Strike-Off-Process{background:#ffd8a8}.f-Double-Status,.f-Other-Status{background:#ffeb9c}
+.f-Active{background:#c6efce}.f-Not-Found{background:#e0e0e0}.f-Invalid-Input,.f-Error{background:#ffc7ce}
+td.flag{font-weight:700;white-space:nowrap}footer{padding:18px 6vw;color:#667;font-size:.8rem}

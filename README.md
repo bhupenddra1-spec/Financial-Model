@@ -108,3 +108,37 @@ python -m pytest
 - Classification is as of the date the result was fetched. Re-verify vendors from time to time,
   because an enterprise's category can change.
 - For important decisions, confirm the result on the official Udyam portal.
+
+---
+
+# Struck-Off Companies Checker
+
+Second tool in this repo (`struckoff_checker/`): identifies suppliers that are **struck off by MCA**
+(sections 248 / 560 of the Companies Act, 2013), for the Revised Schedule III disclosure of
+transactions with struck-off companies. Modelled on https://webtel.in/Struck-Off-Companies.
+
+```bash
+pip install -r requirements.txt
+python -m struckoff_checker.app        # http://127.0.0.1:5001  (demo data)
+
+# against your own MCA master data (sample file included)
+STRUCKOFF_PROVIDER=local STRUCKOFF_MASTER_FILE=sample_data/struckoff_master.csv python -m struckoff_checker.app
+```
+
+Then upload `sample_data/suppliers_to_check.csv` on the **Bulk Check** tab.
+
+- **Search by** company name, CIN/LLPIN, PAN or GSTIN (PAN is derived from the GSTIN). Order tried: CIN, PAN, name.
+- **Flags:** Struck-Off, Under Strike-Off Process, Active, Other Status (amalgamated, dormant...),
+  Double Status (matches with conflicting statuses), Not Found, Invalid Input.
+- **Excel report** follows the `Format-for-struck-off-Companies` workbook: `Suppliers`, `Supplier-Final Sheet`
+  (21 MCA master-data columns + flag), `Supplier- Double Status`, `Sheet1` (PAN name vs master name), plus `Summary`.
+
+## Data sources
+
+MCA's master-data page is CAPTCHA-protected and has no free API, so live data needs a licensed
+provider (same approach as the MSME tool). `STRUCKOFF_PROVIDER` = `demo` (default, fake data), `local`
+(your CSV/XLSX master file) or `http` (any REST API: `STRUCKOFF_API_URL_CIN|PAN|NAME` with `{id}`,
+`STRUCKOFF_API_KEY`, `STRUCKOFF_API_KEY_HEADER`, `STRUCKOFF_API_METHOD`, `STRUCKOFF_API_RESULTS_PATH`,
+`STRUCKOFF_API_FIELD_MAP` - a JSON map from our field names in `providers.FIELDS` to dotted response paths).
+Other settings: `STRUCKOFF_CACHE_DAYS` (7), `STRUCKOFF_CACHE_DB`, `STRUCKOFF_BULK_LIMIT` (2000), `PORT` (5001).
+Name-only matches can be ambiguous: the report says so, and they should be confirmed on the MCA portal.
