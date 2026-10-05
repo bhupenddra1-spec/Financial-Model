@@ -33,6 +33,63 @@ class ProviderError(Exception):
     """Raised when a provider cannot complete a lookup (network, auth, bad response)."""
 
 
+def dig(data, path):
+    """Follow a dotted path ("data.items.0.name") through nested dicts/lists."""
+    for part in path.split("."):
+        if isinstance(data, list) and part.isdigit():
+            data = data[int(part)] if int(part) < len(data) else None
+        elif isinstance(data, dict):
+            data = data.get(part)
+        else:
+            return None
+    return data
+
+
+def api_headers(env, prefix):
+    headers = {"Accept": "application/json"}
+    if env.get(f"{prefix}_API_KEY"):
+        headers[env.get(f"{prefix}_API_KEY_HEADER", "Authorization")] = env[f"{prefix}_API_KEY"]
+    return headers
+
+
+def fetch_json(url_template, identifier, method, headers, timeout):
+    """Call a lookup API; returns parsed JSON, or None on HTTP 404."""
+    import requests
+
+    url = url_template.replace("{id}", identifier)
+    try:
+        if method == "POST":
+            resp = requests.post(url, json={"id_number": identifier}, headers=headers, timeout=timeout)
+        else:
+            resp = requests.get(url, headers=headers, timeout=timeout)
+    except requests.RequestException as exc:
+        raise ProviderError(f"API request failed: {exc}") from exc
+    if resp.status_code == 404:
+        return None
+    if resp.status_code >= 400:
+        raise ProviderError(f"API returned HTTP {resp.status_code}")
+    try:
+        return resp.json()
+    except ValueError as exc:
+        raise ProviderError("API returned a non-JSON response") from exc
+
+
+def read_table(path):
+    """Rows of a CSV / XLSX file as dicts keyed by the header row."""
+    if not os.path.exists(path):
+        raise ProviderError(f"Master file not found: {path}")
+    if path.lower().endswith((".xlsx", ".xlsm")):
+        from openpyxl import load_workbook
+        ws = load_workbook(path, read_only=True, data_only=True).active
+        rows = list(ws.iter_rows(values_only=True))
+        if not rows:
+            return []
+        headers = [str(h or "").strip() for h in rows[0]]
+        return [dict(zip(headers, r)) for r in rows[1:]]
+    with open(path, newline="", encoding="utf-8-sig") as f:
+        return list(csv.DictReader(f))
+
+
 class BaseProvider:
     name = "base"
 
@@ -106,27 +163,12 @@ class LocalFileProvider(BaseProvider):
     def __init__(self, path):
         self.path = path
         self._by_pan, self._by_udyam = {}, {}
-        for row in self._read_rows(path):
+        for row in read_table(path):
             record = self._map_row(row)
             if record.get("pan"):
                 self._by_pan[normalise(record["pan"])] = record
             if record.get("udyam_number"):
                 self._by_udyam[normalise(record["udyam_number"])] = record
-
-    @staticmethod
-    def _read_rows(path):
-        if not os.path.exists(path):
-            raise ProviderError(f"MSME master file not found: {path}")
-        if path.lower().endswith((".xlsx", ".xlsm")):
-            from openpyxl import load_workbook
-            ws = load_workbook(path, read_only=True, data_only=True).active
-            rows = list(ws.iter_rows(values_only=True))
-            if not rows:
-                return []
-            headers = [str(h or "").strip() for h in rows[0]]
-            return [dict(zip(headers, r)) for r in rows[1:]]
-        with open(path, newline="", encoding="utf-8-sig") as f:
-            return list(csv.DictReader(f))
 
     def _map_row(self, row):
         lowered = {str(k).strip().lower(): v for k, v in row.items() if k is not None}
@@ -164,49 +206,21 @@ class HttpApiProvider(BaseProvider):
             raise ProviderError("Set MSME_API_URL_PAN and/or MSME_API_URL_UDYAM for the http provider")
         self.method = env.get("MSME_API_METHOD", "GET").upper()
         self.timeout = float(env.get("MSME_API_TIMEOUT", "20"))
-        self.headers = {"Accept": "application/json"}
-        if env.get("MSME_API_KEY"):
-            self.headers[env.get("MSME_API_KEY_HEADER", "Authorization")] = env["MSME_API_KEY"]
+        self.headers = api_headers(env, "MSME")
         self.field_map = json.loads(env.get("MSME_API_FIELD_MAP", "{}")) or {f: f for f in FIELDS}
         self.not_found_path = env.get("MSME_API_NOT_FOUND_PATH", "")
         self.not_found_value = env.get("MSME_API_NOT_FOUND_VALUE", "")
 
-    @staticmethod
-    def _dig(data, path):
-        for part in path.split("."):
-            if isinstance(data, list) and part.isdigit():
-                data = data[int(part)] if int(part) < len(data) else None
-            elif isinstance(data, dict):
-                data = data.get(part)
-            else:
-                return None
-        return data
-
     def lookup(self, identifier, id_type):
-        import requests
-
         template = self.url_pan if id_type == "PAN" else self.url_udyam
         if not template:
             raise ProviderError(f"No API URL configured for {id_type} lookups")
-        url = template.replace("{id}", identifier)
-        try:
-            if self.method == "POST":
-                resp = requests.post(url, json={"id_number": identifier}, headers=self.headers, timeout=self.timeout)
-            else:
-                resp = requests.get(url, headers=self.headers, timeout=self.timeout)
-        except requests.RequestException as exc:
-            raise ProviderError(f"API request failed: {exc}") from exc
-        if resp.status_code == 404:
+        payload = fetch_json(template, identifier, self.method, self.headers, self.timeout)
+        if payload is None:
             return None
-        if resp.status_code >= 400:
-            raise ProviderError(f"API returned HTTP {resp.status_code}")
-        try:
-            payload = resp.json()
-        except ValueError as exc:
-            raise ProviderError("API returned a non-JSON response") from exc
-        if self.not_found_path and str(self._dig(payload, self.not_found_path)) == self.not_found_value:
+        if self.not_found_path and str(dig(payload, self.not_found_path)) == self.not_found_value:
             return None
-        record = {f: self._dig(payload, path) for f, path in self.field_map.items()}
+        record = {f: dig(payload, path) for f, path in self.field_map.items()}
         if not (record.get("udyam_number") or record.get("enterprise_name")):
             return None
         return {f: "" if record.get(f) is None else str(record[f]) for f in FIELDS}

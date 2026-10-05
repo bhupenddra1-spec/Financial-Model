@@ -1,0 +1,11 @@
+S.No,Company Name,GST,PAN
+1,Sunrise Polymers Pvt Ltd,27AABCS1111A1Z5,AABCS1111A
+2,Navkar Logistics Pvt. Ltd.,,AACCN2222B
+3,Apex Engineering Works Ltd,24AADCA3333C1ZM,
+4,Bharat Packaging Pvt Ltd,,AAFCB4444D
+5,Pioneer Tech Solutions LLP,,AAKFP5555E
+6,Vertex Infra Private Limited,36AAGCV6666F1Z2,AAGCV6666F
+7,Om Sai Traders,,ABCPS1234K
+8,Unknown Company Pvt Ltd,,AABCZ9999Z
+9,Wrong GST Entry,27AABCS1111A1Z,
+10,Mismatched PAN Ltd,27AABCS1111A1Z5,AACCN2222B

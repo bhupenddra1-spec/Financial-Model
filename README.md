@@ -1,4 +1,17 @@
-# MSME Search & Verification Tool
+# Compliance Tools: MSME Verification & Struck-Off Companies
+
+A small web app with two tools for checking vendors:
+
+1. **MSME Search & Verification** (`/`): Udyam registration status by PAN or Udyam number.
+2. **Struck-Off Companies** (`/struck-off`): finds suppliers that MCA has struck off, or that are
+   under process of striking off, dormant or otherwise not active, from their PAN / GSTIN / CIN.
+
+**Windows:** double-click `Start Compliance Tools.bat`. It installs what the tool needs and opens it
+in your browser. You need Python installed first (python.org, tick "Add python.exe to PATH").
+
+---
+
+## 1. MSME Search & Verification
 
 A web tool for checking the MSME (Udyam) registration status of vendors, so you can comply
 with the **MSMED Act, 2006** (45-day payment rule, half-yearly MSME Form-1) and
@@ -76,6 +89,67 @@ export MSME_API_NOT_FOUND_VALUE=NOT_FOUND
 If your vendor needs something these settings can't express (OAuth, signed requests), subclass
 `BaseProvider` in `msme_verifier/providers.py`.
 
+## 2. Struck-Off Companies
+
+Upload your supplier list (sheet **Suppliers**: `S.No, Company Name, GST, PAN`, the same layout as
+the template on the page). The tool will:
+
+- take the PAN from the GSTIN when the PAN is missing, and flag a PAN that doesn't match the GSTIN
+- skip PANs that can't be on MCA (individuals, HUFs, trusts...; only companies `C` and LLPs `F` are checked)
+- look up each company's MCA master data and classify its **Company Status (for efiling)**:
+  Active / **Struck Off** / **Under Process of Striking Off** / Other - Not Active (dormant,
+  amalgamated, under liquidation, dissolved...) / Not Found on MCA
+- detect **double status**, where one PAN is linked to several CINs, and pick the CIN whose name best
+  matches your supplier name
+- flag name mismatches and ACTIVE (INC-22A) non-compliance
+
+**Download Report** produces the Excel format you use:
+
+| Sheet | Contents |
+|---|---|
+| `Suppliers` | Your input (S.No, Company Name, GST, PAN) plus MCA Status, Result and Remarks |
+| `Supplier-Final Sheet` | One row per supplier: Company Name, PAN, CIN, Company Name As Per CIN, Company Status (for efiling), ROC Code, Registration Number, Category, SubCategory, Class, Paid up Capital, Number of Members, Date of Incorporation, Registered Address, Other Address, Email, Listed, Suspended, ACTIVE Compliance, Date of last AGM, Date of Balance Sheet |
+| `Supplier- Double Status` | Every CIN found for suppliers whose PAN maps to more than one company |
+| `Summary` | Counts by result |
+
+The status cells are colour-coded: red for struck off or under process, amber for other inactive
+statuses, green for active.
+
+### Data source for MCA data
+
+MCA's "View Company / LLP Master Data" has no free API (it is behind a CAPTCHA), and MCA does not
+publish a PAN-to-CIN mapping. Choose the source with `MCA_PROVIDER`:
+
+| `MCA_PROVIDER` | Use |
+|---|---|
+| `demo` (default) | Made-up, repeatable data |
+| `local` | A company master file you maintain (CSV/XLSX) with a `PAN` column and the report's column headers. See `sample_data/company_master.csv`. Several rows with the same PAN make a double status. Set `MCA_MASTER_FILE`. |
+| `http` | A licensed company-data API (several KYC/data vendors offer "company details by PAN / CIN") |
+
+```bash
+export MCA_PROVIDER=http
+export MCA_API_URL_PAN="https://api.your-vendor.com/company/by-pan?pan={id}"
+export MCA_API_URL_CIN="https://api.your-vendor.com/company/master-data?cin={id}"
+export MCA_API_KEY="Bearer <your-token>"         # MCA_API_KEY_HEADER defaults to Authorization
+export MCA_API_RESULTS_PATH=data.companies       # where the record list sits in the JSON
+export MCA_API_FIELD_MAP='{"cin": "cin", "company_name": "company_name", "status": "company_status", "roc_code": "roc", "date_of_last_agm": "last_agm_date"}'
+```
+
+The field keys you can map are: `cin, company_name, status, roc_code, registration_number, category,
+subcategory, class_of_company, paid_up_capital, number_of_members, date_of_incorporation,
+registered_address, other_address, email, listed, suspended, active_compliance, date_of_last_agm,
+date_of_balance_sheet`.
+
+Try it with the sample files:
+
+```bash
+MCA_PROVIDER=local MCA_MASTER_FILE=sample_data/company_master.csv python -m msme_verifier.app
+# open http://127.0.0.1:5000/struck-off and upload sample_data/suppliers_to_check.csv
+```
+
+On Windows Command Prompt, set each variable on its own line first:
+`set MCA_PROVIDER=local` and `set MCA_MASTER_FILE=sample_data\company_master.csv`.
+
 ## Other settings
 
 | Variable | Default | Meaning |
@@ -93,6 +167,11 @@ If your vendor needs something these settings can't express (OAuth, signed reque
 | `POST /api/bulk` | multipart `file`, or `{"ids": [...]}` | `{results, summary}` |
 | `POST /api/export` | `{"results": [...]}` | `.xlsx` report |
 | `GET /api/template` | – | Bulk upload template |
+| `POST /api/struck-off/check` | `{"id": "<PAN, GSTIN or CIN>"}` | One supplier result |
+| `POST /api/struck-off/bulk` | multipart `file`, or `{"suppliers": [{"name", "gst", "pan", "cin"}]}` | `{results, summary}` |
+| `POST /api/struck-off/report` | `{"results": [...]}` | `.xlsx` report |
+| `GET /api/struck-off/template` | – | Supplier list template |
+| `GET /api/struck-off/sample-report` | – | Sample report (demo data) |
 
 ## Development
 
@@ -101,7 +180,7 @@ pip install -r requirements-dev.txt
 python -m pytest
 ```
 
-## Compliance notes
+## Compliance notes (MSME)
 
 - The 45-day / Sec 43B(h) flag is "Yes" only for **Micro** and **Small** enterprises whose major
   activity is manufacturing or services. Medium enterprises and traders are marked "No".

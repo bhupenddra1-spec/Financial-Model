@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Struck-Off Companies Check</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+{% include "_nav.html" %}
+<header class="hero">
+  <div class="wrap">
+    <h1>Get your <span>Struck-Off Companies</span> identified</h1>
+    <p class="tagline">as per MCA, in an easy manner</p>
+    <p class="about">Finding struck-off companies in your supplier list by hand takes hours. Upload the list with
+      PAN / GSTIN and get each supplier's MCA company status (Active, Strike Off, Under Process of Striking Off,
+      Dormant, Amalgamated and more) along with the full MCA master data, in one Excel report.</p>
+    <div class="hero-actions">
+      <a class="btn-light" href="/api/struck-off/sample-report">Download Sample Report</a>
+      <a class="btn-light" href="/api/struck-off/template">Download Supplier List Template</a>
+    </div>
+    {% if provider == 'demo' %}
+    <div class="banner">Demo mode: results are synthetic sample data. Configure an MCA data provider for live results (see README).</div>
+    {% endif %}
+  </div>
+</header>
+
+<main class="wrap">
+  <ol class="steps" style="margin-top:20px">
+    <li>Download the template, or use your own supplier sheet with <b>Company Name</b>, <b>GST</b> and <b>PAN</b> columns.</li>
+    <li>Upload it below. If a supplier has no PAN, it's taken from the GSTIN.</li>
+    <li>Review the results and download the report: Suppliers, Final Sheet, Double Status and Summary.</li>
+  </ol>
+
+  <nav class="tabs" role="tablist">
+    <button class="tab active" data-tab="bulk" role="tab">Bulk Supplier Check</button>
+    <button class="tab" data-tab="single" role="tab">Single Search</button>
+  </nav>
+
+  <section id="tab-bulk" class="panel">
+    <div class="cards">
+      <form id="so-file" class="card">
+        <h2>Upload supplier list</h2>
+        <p class="hint">Excel (.xlsx) or CSV. The <b>Suppliers</b> sheet is used if your workbook has one.
+          <a href="/api/struck-off/template">Download template</a></p>
+        <input type="file" name="file" accept=".xlsx,.xlsm,.csv" required>
+        <button type="submit">Check suppliers</button>
+      </form>
+      <form id="so-paste" class="card">
+        <h2>Paste PAN / GSTIN / CIN</h2>
+        <p class="hint">One per line. Optionally add the company name after a tab or comma (copied straight from Excel).</p>
+        <textarea name="ids" rows="5" placeholder="AAACS1234D&#10;27AAACS1234D1Z8, Sunrise Polymers Pvt Ltd"></textarea>
+        <button type="submit">Check list</button>
+      </form>
+    </div>
+
+    <div id="so-output" hidden>
+      <div class="toolbar">
+        <div id="so-summary" class="summary"></div>
+        <div class="actions">
+          <input id="so-filter" type="search" placeholder="Filter results">
+          <button id="so-export" type="button">Download Report</button>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table id="so-results">
+          <thead><tr>
+            <th>S.No</th><th>Company Name</th><th>GST</th><th>PAN</th><th>Result</th><th>CIN</th>
+            <th>Company Name As Per CIN</th><th>MCA Status</th><th>Last AGM</th><th>Remarks</th>
+          </tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <section id="tab-single" class="panel" hidden>
+    <form id="so-single" class="card search">
+      <h2>Check one supplier</h2>
+      <label for="so-id">PAN, GSTIN or CIN</label>
+      <div class="row">
+        <input id="so-id" name="id" placeholder="AAACS1234D / 27AAACS1234D1Z8 / U12345MH2010PTC123456" maxlength="21" autocomplete="off" required>
+        <button type="submit">Check</button>
+      </div>
+    </form>
+    <div id="so-single-result"></div>
+  </section>
+
+  <div id="busy" class="busy" hidden>Checking&hellip;</div>
+</main>
+
+<footer class="wrap foot">Results depend on the configured data source &middot; source: <b>{{ provider }}</b>.
+  For important decisions, confirm the status on the MCA portal (View Company / LLP Master Data).</footer>
+
+<script src="{{ url_for('static', filename='struck_off.js') }}"></script>
+</body>
+</html>
