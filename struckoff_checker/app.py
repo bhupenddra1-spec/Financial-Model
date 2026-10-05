@@ -21,7 +21,8 @@ def create_app(env=None, provider=None):
 
     @app.get("/")
     def index():
-        return render_template("index.html", provider=service.provider.name)
+        return render_template("index.html", provider=service.provider.name,
+                               info=getattr(service.provider, "info", ""))
 
     @app.get("/api/health")
     def health():

@@ -4,7 +4,8 @@ MCA's "View Company Master Data" page is CAPTCHA-protected and has no free API,
 so (as with the MSME tool) live lookups go through a licensed data provider.
 
 * ``demo``  - deterministic synthetic data for trying the tool.
-* ``local`` - your own MCA master-data file (CSV / XLSX), e.g. an MCA bulk download.
+* ``local`` - your own MCA master-data file (CSV / XLSX), loaded into memory (small files).
+* ``mca_db`` - SQLite database built from data.gov.in files by ``ogd_loader`` (millions of rows).
 * ``http``  - any REST API, configured through environment variables.
 
 Every provider implements ``search(kind, value)`` -> list of record dicts keyed
@@ -173,6 +174,36 @@ class LocalFileProvider(BaseProvider):
         return list(self.by_name[close[0]]) if close else []
 
 
+class MasterDbProvider(BaseProvider):
+    """Reads the SQLite database built by ``python -m struckoff_checker.ogd_loader``.
+
+    Handles millions of rows. Open data has no PAN, so PAN search is reported as
+    unsupported (None) unless the loaded files carried a PAN column.
+    """
+
+    name = "mca_db"
+
+    def __init__(self, path):
+        import sqlite3
+        if not os.path.exists(path):
+            raise ProviderError(f"MCA database not found: {path} (build it with python -m struckoff_checker.ogd_loader)")
+        self._db = sqlite3.connect(f"file:{path}?mode=ro", uri=True, check_same_thread=False)
+        self._db.row_factory = sqlite3.Row
+        try:
+            self._has_pan = self._db.execute("SELECT 1 FROM companies WHERE pan != '' LIMIT 1").fetchone() is not None
+            meta = dict(self._db.execute("SELECT key, value FROM meta").fetchall())
+        except sqlite3.DatabaseError as exc:
+            raise ProviderError(f"{path} is not a valid MCA database: {exc}") from exc
+        self.info = f"MCA open data loaded {meta.get('loaded_at', '?')} ({int(meta.get('rows', 0)):,} companies)"
+
+    def search(self, kind, value):
+        if kind == "PAN" and not self._has_pan:
+            return None
+        column, key = {"CIN": ("cin", value), "PAN": ("pan", value), "NAME": ("name_key", normalise_name(value))}[kind]
+        rows = self._db.execute(f"SELECT {', '.join(FIELDS)} FROM companies WHERE {column} = ? LIMIT 20", (key,)).fetchall()
+        return [_blank(dict(r)) for r in rows]
+
+
 class HttpApiProvider(BaseProvider):
     """Generic REST provider.
 
@@ -249,6 +280,8 @@ def build_provider(env=os.environ):
         return DemoProvider()
     if kind == "local":
         return LocalFileProvider(env.get("STRUCKOFF_MASTER_FILE", "sample_data/struckoff_master.csv"))
+    if kind == "mca_db":
+        return MasterDbProvider(env.get("STRUCKOFF_MCA_DB", "mca_master.sqlite3"))
     if kind == "http":
         return HttpApiProvider(env)
-    raise ProviderError(f"Unknown STRUCKOFF_PROVIDER '{kind}' (use demo, local or http)")
+    raise ProviderError(f"Unknown STRUCKOFF_PROVIDER '{kind}' (use demo, local, mca_db or http)")

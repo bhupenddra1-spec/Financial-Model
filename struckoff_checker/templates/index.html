@@ -11,7 +11,7 @@
   <h1>Get your <span>Struck-Off Companies</span> Identified</h1>
   <p>Check suppliers against MCA company status &mdash; for the Revised Schedule III disclosure of transactions with
      companies struck off under section 248 / 560 of the Companies Act, 2013.</p>
-  <p class="meta">Data source: <b>{{ provider }}</b>
+  <p class="meta">Data source: <b>{{ provider }}</b>{% if info %} &ndash; {{ info }}{% endif %}
     {% if provider == 'demo' %}<span class="badge warn">Demo data &ndash; not real MCA records</span>{% endif %}</p>
 </header>
 

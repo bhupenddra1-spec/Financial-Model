@@ -142,3 +142,29 @@ provider (same approach as the MSME tool). `STRUCKOFF_PROVIDER` = `demo` (defaul
 `STRUCKOFF_API_FIELD_MAP` - a JSON map from our field names in `providers.FIELDS` to dotted response paths).
 Other settings: `STRUCKOFF_CACHE_DAYS` (7), `STRUCKOFF_CACHE_DB`, `STRUCKOFF_BULK_LIMIT` (2000), `PORT` (5001).
 Name-only matches can be ambiguous: the report says so, and they should be confirmed on the MCA portal.
+
+## Free data: MCA open data from data.gov.in (`mca_db`)
+
+MCA publishes company master data (including each company's status, e.g. *Strike Off*) as open data on
+[data.gov.in](https://data.gov.in) (search "Company Master Data"; files are usually split by state).
+
+```bash
+# 1. download the CSV/XLSX files you need, then build the database (streams, handles millions of rows)
+python -m struckoff_checker.ogd_loader files/*.csv -o mca_master.sqlite3 --replace
+
+# 2. run the tool on it
+STRUCKOFF_PROVIDER=mca_db STRUCKOFF_MCA_DB=mca_master.sqlite3 python -m struckoff_checker.app
+```
+
+- Reads the standard columns (`CORPORATE_IDENTIFICATION_NUMBER`, `COMPANY_NAME`, `COMPANY_STATUS`,
+  `DATE_OF_REGISTRATION`, `REGISTRAR_OF_COMPANIES`, `REGISTERED_OFFICE_ADDRESS`, `EMAIL_ADDR`, ...) and
+  maps them to the report's columns. Rows without a CIN are skipped. Re-loading a file updates existing rows;
+  load more files without `--replace` to add other states.
+- **Limits:** the open data has **no PAN**, so supplier rows are matched by **CIN or company name** only
+  (a PAN/GSTIN-only row shows "Not Found - provider does not support PAN search"). Names must match after
+  normalisation (case, punctuation, PVT/PRIVATE, LTD/LIMITED); no fuzzy matching. Several companies sharing a name
+  appear as multiple matches, and conflicting statuses are flagged *Double Status*.
+  "Date of last AGM / Balance Sheet" columns hold the latest filing *year* given in the open data.
+- **Freshness:** results are only as current as the files you load. The load date is shown on the page; confirm
+  any struck-off finding on the MCA portal before relying on it.
+- `sample_data/ogd_sample_company_master.csv` is a tiny file in the same layout for trying the loader.
