@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>MSME Search &amp; Verification</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+<header class="hero">
+  <div class="wrap">
+    <h1>MSME <span>Search</span> &amp; <span>Verification</span></h1>
+    <p class="tagline">Simplifying MSME compliance for your business</p>
+    <p class="about">Under the MSME Development Act, 2006, verify the Udyam registration status of your vendors
+      for the 45-day payment rule, Section 43B(h) of the Income-tax Act and MSME Form-1 reporting.</p>
+    {% if provider == 'demo' %}
+    <div class="banner">Demo mode: results are synthetic sample data. Configure a data provider for live verification (see README).</div>
+    {% endif %}
+  </div>
+</header>
+
+<main class="wrap">
+  <nav class="tabs" role="tablist">
+    <button class="tab active" data-tab="single" role="tab">Single Search</button>
+    <button class="tab" data-tab="bulk" role="tab">Bulk Verification</button>
+  </nav>
+
+  <section id="tab-single" class="panel">
+    <div class="cards">
+      <form class="card search" data-kind="PAN">
+        <h2>MSME Search by PAN</h2>
+        <label for="pan">PAN number</label>
+        <div class="row">
+          <input id="pan" name="id" placeholder="AAAPL1234C" maxlength="10" autocomplete="off" required>
+          <button type="submit">Verify</button>
+        </div>
+      </form>
+      <form class="card search" data-kind="UDYAM">
+        <h2>MSME Search by <span class="gold">Udyam Number</span></h2>
+        <label for="udyam">Udyam registration number</label>
+        <div class="row">
+          <input id="udyam" name="id" placeholder="UDYAM-MH-26-0012345" maxlength="19" autocomplete="off" required>
+          <button type="submit">Verify</button>
+        </div>
+      </form>
+    </div>
+    <div id="single-result"></div>
+  </section>
+
+  <section id="tab-bulk" class="panel" hidden>
+    <div class="cards">
+      <form id="bulk-file" class="card">
+        <h2>Upload vendor list</h2>
+        <p class="hint">Excel (.xlsx) or CSV with a column headed <b>PAN</b> or <b>Udyam</b>. PAN and Udyam numbers can be mixed.
+          <a href="/api/template">Download template</a></p>
+        <input type="file" name="file" accept=".xlsx,.xlsm,.csv,.txt" required>
+        <button type="submit">Verify file</button>
+      </form>
+      <form id="bulk-paste" class="card">
+        <h2>Paste numbers</h2>
+        <p class="hint">One PAN or Udyam number per line (or separated by spaces).</p>
+        <textarea name="ids" rows="5" placeholder="AAAPL1234C&#10;UDYAM-MH-26-0012345"></textarea>
+        <button type="submit">Verify list</button>
+      </form>
+    </div>
+    <div id="bulk-output" hidden>
+      <div class="toolbar">
+        <div id="summary" class="summary"></div>
+        <div class="actions">
+          <input id="filter" type="search" placeholder="Filter results">
+          <button id="export" type="button">Export to Excel</button>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table id="results">
+          <thead><tr>
+            <th>Input</th><th>Status</th><th>Udyam Number</th><th>PAN</th><th>Name of Enterprise</th>
+            <th>Type</th><th>Major Activity</th><th>Organisation</th><th>Incorporated</th><th>45-day / 43B(h)</th><th>Remarks</th>
+          </tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <div id="busy" class="busy" hidden>Verifying&hellip;</div>
+</main>
+
+<footer class="wrap foot">Results depend on the configured data source &middot; source: <b>{{ provider }}</b>.
+  Always confirm critical cases on the official Udyam portal.</footer>
+
+<script src="{{ url_for('static', filename='app.js') }}"></script>
+</body>
+</html>
